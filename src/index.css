@@ -1,0 +1,57 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  @apply bg-[#F4F6F5] text-ink font-body antialiased;
+}
+
+.font-display { font-family: 'Space Grotesk', sans-serif; }
+.font-mono { font-family: 'IBM Plex Mono', monospace; }
+
+/* Reusable component classes */
+.card {
+  @apply bg-white border border-black/[0.06] rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.04)];
+}
+
+.btn-primary {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 text-white text-sm font-semibold px-4 py-2.5 hover:bg-brand-700 active:bg-brand-800 transition-colors disabled:opacity-50 disabled:pointer-events-none;
+}
+
+.btn-secondary {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg bg-white border border-black/10 text-ink text-sm font-semibold px-4 py-2.5 hover:bg-black/[0.03] transition-colors disabled:opacity-50 disabled:pointer-events-none;
+}
+
+.btn-danger {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg bg-red-50 text-red-700 border border-red-200 text-sm font-semibold px-3 py-2 hover:bg-red-100 transition-colors;
+}
+
+.input {
+  @apply w-full rounded-lg border border-black/10 bg-white px-3 py-2.5 text-sm text-ink placeholder:text-black/35 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition;
+}
+
+.label {
+  @apply block text-xs font-semibold uppercase tracking-wide text-black/45 mb-1.5;
+}
+
+.badge {
+  @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white;
+  }
+  main {
+    margin: 0 !important;
+  }
+}
