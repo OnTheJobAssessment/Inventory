@@ -42,6 +42,7 @@ Fitur-fitur baru yang ditambahkan:
 | Scan Stok Keluar | Scan Stok Keluar (menu baru) | Scan barcode pakai kamera HP → langsung kurangi stok |
 | 🆕 Input Manual Stok Keluar | Scan Stok Keluar | Alternatif kalau scan tidak memungkinkan — pilih item dari daftar, tidak perlu kamera |
 | 🆕 Scan pakai QR code | Scan Stok Keluar, Cetak Barcode | Format utama diganti dari barcode 1D ke QR code — jauh lebih andal dibaca kamera HP dibanding barcode garis-garis |
+| 🆕 Download Kartu Stok dari Scan | Scan Stok Keluar | Setelah scan/pilih item, ada tombol untuk langsung download Kartu Stok PDF-nya — bisa dipakai frontliner juga |
 | Perbaikan kamera scan di HP | Scan Stok Keluar | Perbaikan bug render + fallback otomatis kalau kamera belakang tidak terdeteksi |
 | Tampilan responsif | Seluruh aplikasi | Sidebar jadi menu hamburger di HP/tablet, tabel bisa discroll |
 
@@ -411,15 +412,22 @@ ulang — tidak perlu upload manual lagi.
 2. Kalau login sebagai admin, pilih gudang dulu
 3. Klik **📷 Scan Barcode** — browser akan minta izin akses kamera, klik **Izinkan**
 4. Arahkan kamera HP ke **QR code** di label (bagian atas, bukan garis-garisnya)
-5. Setelah terdeteksi, muncul info item + stok saat ini → isi **Jumlah
-   Keluar** → klik **Konfirmasi Keluar**
+5. Setelah terdeteksi, muncul info item + stok saat ini. Di sini ada 2 pilihan:
+   - Isi **Jumlah Keluar** → klik **Konfirmasi Keluar** untuk mengurangi stok
+   - Atau klik **📄 Download Kartu Stok** untuk langsung mengunduh riwayat
+     kartu stok item tersebut di gudang ini, tanpa perlu buka menu Stok Gudang
+
+Tombol download ini juga tersedia untuk role **Frontliner** — jadi mereka
+bisa scan/pilih item lalu langsung cek atau simpan kartu stoknya sendiri di
+lapangan, tanpa perlu akses ke halaman Stok Gudang.
 
 **Input manual (kalau tidak ada barcode / kamera bermasalah):**
 
 1. Buka menu **Scan Stok Keluar**
 2. Klik **✍️ Input Manual**
 3. Ketik nama/kode di kolom cari, pilih item dari daftar → klik **Lanjut**
-4. Isi jumlah → **Konfirmasi Keluar**
+4. Sama seperti alur scan: isi jumlah lalu **Konfirmasi Keluar**, atau klik
+   **📄 Download Kartu Stok** untuk mengunduh riwayatnya saja
 
 Ini alur yang sama persis dengan hasil scan (mengurangi stok, tercatat di
 riwayat) — cuma cara memilih itemnya beda. Cocok dipakai kalau barcode belum

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
+import { fetchAndPrintKartuStok } from '../lib/kartuStok'
 
 const READER_ELEMENT_ID = 'scan-reader'
 
@@ -15,6 +16,7 @@ export default function ScanKeluar() {
   const [qty, setQty] = useState(1)
   const [message, setMessage] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  const [downloadingKartu, setDownloadingKartu] = useState(false)
 
   const [items, setItems] = useState([])
   const [manualItemId, setManualItemId] = useState('')
@@ -22,6 +24,9 @@ export default function ScanKeluar() {
 
   const scannerRef = useRef(null)
   const warehouseId = isAdmin ? selectedWarehouse : profile?.warehouse_id
+  const currentWarehouse = isAdmin
+    ? warehouses.find((w) => String(w.id) === String(selectedWarehouse))
+    : profile?.warehouses
 
   useEffect(() => {
     if (isAdmin) loadWarehouses()
@@ -218,6 +223,17 @@ export default function ScanKeluar() {
     setMessage(null)
   }
 
+  async function handleDownloadKartuStok() {
+    if (!scannedItem || !currentWarehouse) return
+    setDownloadingKartu(true)
+    try {
+      await fetchAndPrintKartuStok(supabase, { item: scannedItem.item, warehouse: currentWarehouse })
+    } catch (e) {
+      setMessage({ type: 'error', text: 'Gagal membuat Kartu Stok: ' + e.message })
+    }
+    setDownloadingKartu(false)
+  }
+
   const filteredManualItems = items.filter(
     (it) =>
       it.nama.toLowerCase().includes(manualSearch.toLowerCase()) ||
@@ -352,6 +368,14 @@ export default function ScanKeluar() {
                 {submitting ? 'Menyimpan...' : 'Konfirmasi Keluar'}
               </button>
             </div>
+
+            <button
+              className="btn-secondary w-full"
+              disabled={downloadingKartu}
+              onClick={handleDownloadKartuStok}
+            >
+              {downloadingKartu ? 'Menyiapkan PDF...' : '📄 Download Kartu Stok'}
+            </button>
           </div>
         )}
 

@@ -111,3 +111,53 @@ export function generateKartuStokPdf({ item, warehouse, rows }) {
   const safeName = (item?.nama ?? 'item').replace(/[^a-z0-9]+/gi, '-')
   doc.save(`Kartu-Stok_${item?.kode_posm ?? ''}_${safeName}.pdf`)
 }
+
+/**
+ * Ambil seluruh riwayat mutasi 1 item di 1 gudang (termasuk transfer masuk
+ * dari gudang lain), lalu langsung cetak jadi PDF Kartu Stok.
+ * Dipakai bareng di halaman Stok Gudang dan halaman Scan Stok Keluar supaya
+ * tidak duplikat logika.
+ *
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {{item: {id:number, kode_posm:string, nama:string, satuan:string}, warehouse: {id:number, nama_gudang:string}}} params
+ */
+export async function fetchAndPrintKartuStok(supabase, { item, warehouse }) {
+  if (!item?.id || !warehouse?.id) {
+    throw new Error('Data item atau gudang belum lengkap.')
+  }
+
+  const { data, error } = await supabase
+    .from('stock_movements')
+    .select(`
+      id, tipe, jumlah, nomor_bukti, keterangan, created_at, warehouse_id, warehouse_tujuan_id,
+      asal:warehouse_id(nama_gudang),
+      tujuan:warehouse_tujuan_id(nama_gudang)
+    `)
+    .eq('posm_item_id', item.id)
+    .or(`warehouse_id.eq.${warehouse.id},warehouse_tujuan_id.eq.${warehouse.id}`)
+    .order('created_at', { ascending: true })
+
+  if (error) throw error
+
+  const rows = (data ?? []).map((m) => {
+    const tanggal = new Date(m.created_at).toLocaleDateString('id-ID')
+    let tipe = m.tipe
+    let dariKepada = m.keterangan || ''
+
+    if (m.tipe === 'transfer') {
+      if (m.warehouse_id === warehouse.id) {
+        tipe = 'transfer_keluar'
+        dariKepada = `Kepada: ${m.tujuan?.nama_gudang ?? '-'}`
+      } else {
+        tipe = 'transfer_masuk'
+        dariKepada = `Dari: ${m.asal?.nama_gudang ?? '-'}`
+      }
+    } else if (!dariKepada) {
+      dariKepada = m.tipe === 'masuk' ? 'Stok Masuk' : m.tipe === 'keluar' ? 'Stok Keluar' : 'Stock Opname'
+    }
+
+    return { tanggal, nomor_bukti: m.nomor_bukti, dariKepada, tipe, jumlah: m.jumlah }
+  })
+
+  generateKartuStokPdf({ item, warehouse, rows })
+}

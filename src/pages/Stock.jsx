@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
-import { generateKartuStokPdf } from '../lib/kartuStok'
+import { fetchAndPrintKartuStok } from '../lib/kartuStok'
 
 export default function Stock() {
   const { profile, isAdmin } = useAuth()
@@ -51,58 +51,18 @@ export default function Stock() {
     s.posm_items?.kode_posm?.toLowerCase().includes(search.toLowerCase())
   )
 
-  // Ambil seluruh riwayat mutasi item ini di gudang ini (termasuk transfer masuk
-  // dari gudang lain), lalu susun jadi PDF Kartu Stok.
+  // Ambil seluruh riwayat mutasi item ini di gudang ini, lalu susun jadi PDF Kartu Stok.
   async function handlePrintKartuStok(row) {
     const itemId = row.posm_items?.id
     const warehouseId = row.warehouses?.id
     if (!itemId || !warehouseId) return
 
     setPrintingId(row.id)
-
-    const { data, error } = await supabase
-      .from('stock_movements')
-      .select(`
-        id, tipe, jumlah, nomor_bukti, keterangan, created_at, warehouse_id, warehouse_tujuan_id,
-        asal:warehouse_id(nama_gudang),
-        tujuan:warehouse_tujuan_id(nama_gudang)
-      `)
-      .eq('posm_item_id', itemId)
-      .or(`warehouse_id.eq.${warehouseId},warehouse_tujuan_id.eq.${warehouseId}`)
-      .order('created_at', { ascending: true })
-
-    if (error) {
-      alert('Gagal mengambil riwayat transaksi: ' + error.message)
-      setPrintingId(null)
-      return
+    try {
+      await fetchAndPrintKartuStok(supabase, { item: row.posm_items, warehouse: row.warehouses })
+    } catch (e) {
+      alert('Gagal membuat Kartu Stok: ' + e.message)
     }
-
-    const rows = (data ?? []).map((m) => {
-      const tanggal = new Date(m.created_at).toLocaleDateString('id-ID')
-      let tipe = m.tipe
-      let dariKepada = m.keterangan || ''
-
-      if (m.tipe === 'transfer') {
-        if (m.warehouse_id === warehouseId) {
-          tipe = 'transfer_keluar'
-          dariKepada = `Kepada: ${m.tujuan?.nama_gudang ?? '-'}`
-        } else {
-          tipe = 'transfer_masuk'
-          dariKepada = `Dari: ${m.asal?.nama_gudang ?? '-'}`
-        }
-      } else if (!dariKepada) {
-        dariKepada = m.tipe === 'masuk' ? 'Stok Masuk' : m.tipe === 'keluar' ? 'Stok Keluar' : 'Stock Opname'
-      }
-
-      return { tanggal, nomor_bukti: m.nomor_bukti, dariKepada, tipe, jumlah: m.jumlah }
-    })
-
-    generateKartuStokPdf({
-      item: row.posm_items,
-      warehouse: row.warehouses,
-      rows,
-    })
-
     setPrintingId(null)
   }
 
