@@ -22,8 +22,11 @@ bawah — bagian ini cuma ringkasan/checklist):
    langsung dari web (tanpa buka Supabase Dashboard) →
    lihat [Bagian 3](#3-deploy-edge-function-create-user)
 3. **Tarik kode terbaru & install ulang dependency** (`npm install`) — ada
-   library baru: `jspdf`, `jsbarcode`, `html5-qrcode`
+   library baru: `jspdf`, `jsbarcode`, `html5-qrcode`, `qrcode`
 4. **Push & redeploy ke Vercel** seperti biasa (`git push`)
+5. **Cetak ulang label barcode** yang lama lewat menu Cetak Barcode — label
+   versi sebelumnya (cuma CODE128) tetap bisa discan tapi kurang andal lewat
+   kamera HP; versi baru menambahkan QR code yang jauh lebih mudah dibaca
 
 Fitur-fitur baru yang ditambahkan:
 
@@ -35,10 +38,11 @@ Fitur-fitur baru yang ditambahkan:
 | Nomor Bukti di transaksi | Input Mutasi, Transfer | Field baru untuk nomor surat jalan/bukti serah terima |
 | Tambah user dari web | Manajemen Pengguna | Admin bisa buat akun baru tanpa ke Supabase Dashboard |
 | Role baru: Frontliner | Manajemen Pengguna | Role khusus yang cuma bisa akses halaman Scan |
-| Cetak Barcode | Cetak Barcode (menu baru, admin) | Generate & cetak label barcode CODE128 per item POSM |
+| Cetak Barcode | Cetak Barcode (menu baru, admin) | 🆕 Generate & cetak label berisi QR code (utama) + barcode CODE128 (cadangan) per item POSM |
 | Scan Stok Keluar | Scan Stok Keluar (menu baru) | Scan barcode pakai kamera HP → langsung kurangi stok |
 | 🆕 Input Manual Stok Keluar | Scan Stok Keluar | Alternatif kalau scan tidak memungkinkan — pilih item dari daftar, tidak perlu kamera |
-| 🆕 Perbaikan kamera scan di HP | Scan Stok Keluar | Perbaikan bug render + fallback otomatis kalau kamera belakang tidak terdeteksi |
+| 🆕 Scan pakai QR code | Scan Stok Keluar, Cetak Barcode | Format utama diganti dari barcode 1D ke QR code — jauh lebih andal dibaca kamera HP dibanding barcode garis-garis |
+| Perbaikan kamera scan di HP | Scan Stok Keluar | Perbaikan bug render + fallback otomatis kalau kamera belakang tidak terdeteksi |
 | Tampilan responsif | Seluruh aplikasi | Sidebar jadi menu hamburger di HP/tablet, tabel bisa discroll |
 
 ---
@@ -382,12 +386,23 @@ ulang — tidak perlu upload manual lagi.
 
 ## 11. Cetak & Scan Barcode
 
-**Mencetak barcode (admin):**
+> **Kenapa formatnya QR code, bukan cuma barcode garis-garis (1D)?**
+> Barcode 1D seperti CODE128 didesain untuk scanner laser/CCD khusus yang
+> membaca sepanjang satu garis lurus dengan presisi tinggi. Kamera HP biasa
+> (berbasis gambar, bukan laser) jauh lebih sulit membaca barcode 1D secara
+> konsisten — perlu fokus tajam, jarak & sudut yang pas, pencahayaan bagus.
+> QR code (2D) jauh lebih andal buat kamera HP karena memang itu tujuan
+> desainnya. Karena itu label yang dicetak sekarang berisi **QR code**
+> (dipakai untuk scan lewat kamera HP di halaman Scan Stok Keluar) **dan**
+> **barcode CODE128** di bawahnya (cadangan, kalau suatu saat kalian pakai
+> alat scanner genggam/laser — alat itu justru lebih bagus untuk 1D).
+
+**Mencetak label (admin):**
 
 1. Buka menu **Cetak Barcode**
 2. Pilih item yang mau dicetak (default: semua tercentang)
-3. Klik **🖨 Cetak** — browser akan membuka dialog print. Barcode berformat
-   CODE128 berisi kode POSM item tersebut
+3. Klik **🖨 Cetak** — browser akan membuka dialog print. Tiap label berisi
+   QR code + barcode CODE128, keduanya berisi kode POSM item tersebut
 4. Tempelkan hasil cetakan (bisa print ke label sticker) ke fisik barang/POSM
 
 **Scan untuk kurangi stok (semua role):**
@@ -395,7 +410,7 @@ ulang — tidak perlu upload manual lagi.
 1. Buka menu **Scan Stok Keluar**
 2. Kalau login sebagai admin, pilih gudang dulu
 3. Klik **📷 Scan Barcode** — browser akan minta izin akses kamera, klik **Izinkan**
-4. Arahkan kamera HP/laptop ke barcode
+4. Arahkan kamera HP ke **QR code** di label (bagian atas, bukan garis-garisnya)
 5. Setelah terdeteksi, muncul info item + stok saat ini → isi **Jumlah
    Keluar** → klik **Konfirmasi Keluar**
 

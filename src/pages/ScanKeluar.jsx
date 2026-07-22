@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Html5Qrcode } from 'html5-qrcode'
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 
@@ -63,10 +63,18 @@ export default function ScanKeluar() {
   }
 
   async function startCamera() {
-    const html5Qr = new Html5Qrcode(READER_ELEMENT_ID)
+    const html5Qr = new Html5Qrcode(READER_ELEMENT_ID, {
+      // Fokuskan ke QR code dulu (paling andal dibaca kamera HP), tapi tetap
+      // terima CODE128 untuk jaga-jaga kalau yang discan barcode garis lama.
+      formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE, Html5QrcodeSupportedFormats.CODE_128],
+      // Kalau browser (mis. Chrome Android) punya BarcodeDetector API bawaan,
+      // pakai itu - jauh lebih cepat & akurat daripada decoder JS biasa.
+      experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+      verbose: false,
+    })
     scannerRef.current = html5Qr
 
-    const config = { fps: 10, qrbox: { width: 260, height: 160 } }
+    const config = { fps: 10, qrbox: { width: 250, height: 250 } }
 
     try {
       // Coba kamera belakang dulu (umum untuk HP)

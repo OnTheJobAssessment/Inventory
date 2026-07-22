@@ -1,30 +1,46 @@
 import { useEffect, useRef, useState } from 'react'
 import JsBarcode from 'jsbarcode'
+import QRCode from 'qrcode'
 import { supabase } from '../lib/supabaseClient'
 
 function BarcodeLabel({ item }) {
-  const canvasRef = useRef(null)
+  const qrCanvasRef = useRef(null)
+  const barcodeCanvasRef = useRef(null)
 
   useEffect(() => {
-    if (!canvasRef.current || !item?.kode_posm) return
-    try {
-      JsBarcode(canvasRef.current, item.kode_posm, {
-        format: 'CODE128',
-        width: 2,
-        height: 45,
-        displayValue: true,
-        fontSize: 13,
-        margin: 6,
+    if (!item?.kode_posm) return
+
+    // QR code = format utama untuk discan kamera HP (jauh lebih andal
+    // dibaca kamera dibanding barcode garis-garis/1D).
+    if (qrCanvasRef.current) {
+      QRCode.toCanvas(qrCanvasRef.current, item.kode_posm, { width: 130, margin: 1 }, (err) => {
+        if (err) console.error('Gagal membuat QR code untuk', item.kode_posm, err)
       })
-    } catch (e) {
-      console.error('Gagal membuat barcode untuk', item.kode_posm, e)
+    }
+
+    // Barcode CODE128 = tetap disertakan untuk kompatibilitas kalau nanti
+    // pakai alat scanner genggam/laser (yang justru lebih andal baca 1D).
+    if (barcodeCanvasRef.current) {
+      try {
+        JsBarcode(barcodeCanvasRef.current, item.kode_posm, {
+          format: 'CODE128',
+          width: 1.6,
+          height: 32,
+          displayValue: true,
+          fontSize: 11,
+          margin: 4,
+        })
+      } catch (e) {
+        console.error('Gagal membuat barcode untuk', item.kode_posm, e)
+      }
     }
   }, [item])
 
   return (
-    <div className="border border-black/15 rounded-lg p-3 flex flex-col items-center break-inside-avoid">
-      <canvas ref={canvasRef} />
-      <p className="text-xs font-semibold text-center mt-1">{item.nama}</p>
+    <div className="border border-black/15 rounded-lg p-3 flex flex-col items-center gap-2 break-inside-avoid">
+      <canvas ref={qrCanvasRef} />
+      <canvas ref={barcodeCanvasRef} />
+      <p className="text-xs font-semibold text-center">{item.nama}</p>
     </div>
   )
 }
@@ -70,8 +86,9 @@ export default function BarcodePrint() {
         <div>
           <h1 className="font-display font-bold text-2xl">Cetak Barcode</h1>
           <p className="text-black/45 text-sm mt-1">
-            Pilih item yang mau dicetak labelnya, lalu klik Cetak. Barcode berisi kode POSM
-            dan bisa discan lewat halaman Scan Stok Keluar.
+            Setiap label berisi QR code (utama, dibaca kamera HP di halaman Scan) dan
+            barcode CODE128 (cadangan, untuk alat scanner genggam kalau ada). Isinya sama:
+            kode POSM item tersebut.
           </p>
         </div>
         <button className="btn-primary shrink-0" onClick={() => window.print()} disabled={selectedItems.length === 0}>
@@ -103,7 +120,7 @@ export default function BarcodePrint() {
         </div>
       </div>
 
-      {/* Area cetak: grid label barcode */}
+      {/* Area cetak: grid label QR + barcode */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 print:grid-cols-3 print:gap-3">
         {selectedItems.map((it) => (
           <BarcodeLabel key={it.id} item={it} />
