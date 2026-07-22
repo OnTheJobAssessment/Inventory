@@ -37,6 +37,8 @@ Fitur-fitur baru yang ditambahkan:
 | Role baru: Frontliner | Manajemen Pengguna | Role khusus yang cuma bisa akses halaman Scan |
 | Cetak Barcode | Cetak Barcode (menu baru, admin) | Generate & cetak label barcode CODE128 per item POSM |
 | Scan Stok Keluar | Scan Stok Keluar (menu baru) | Scan barcode pakai kamera HP → langsung kurangi stok |
+| 🆕 Input Manual Stok Keluar | Scan Stok Keluar | Alternatif kalau scan tidak memungkinkan — pilih item dari daftar, tidak perlu kamera |
+| 🆕 Perbaikan kamera scan di HP | Scan Stok Keluar | Perbaikan bug render + fallback otomatis kalau kamera belakang tidak terdeteksi |
 | Tampilan responsif | Seluruh aplikasi | Sidebar jadi menu hamburger di HP/tablet, tabel bisa discroll |
 
 ---
@@ -392,18 +394,39 @@ ulang — tidak perlu upload manual lagi.
 
 1. Buka menu **Scan Stok Keluar**
 2. Kalau login sebagai admin, pilih gudang dulu
-3. Klik **📷 Mulai Scan** — browser akan minta izin akses kamera, klik **Izinkan**
+3. Klik **📷 Scan Barcode** — browser akan minta izin akses kamera, klik **Izinkan**
 4. Arahkan kamera HP/laptop ke barcode
 5. Setelah terdeteksi, muncul info item + stok saat ini → isi **Jumlah
    Keluar** → klik **Konfirmasi Keluar**
 
+**Input manual (kalau tidak ada barcode / kamera bermasalah):**
+
+1. Buka menu **Scan Stok Keluar**
+2. Klik **✍️ Input Manual**
+3. Ketik nama/kode di kolom cari, pilih item dari daftar → klik **Lanjut**
+4. Isi jumlah → **Konfirmasi Keluar**
+
+Ini alur yang sama persis dengan hasil scan (mengurangi stok, tercatat di
+riwayat) — cuma cara memilih itemnya beda. Cocok dipakai kalau barcode belum
+sempat dicetak/ditempel, atau HP tidak punya kamera yang berfungsi baik.
+
 Karena role **Frontliner** hanya melihat menu Dashboard, Scan, dan Riwayat,
-alur kerja mereka jadi sangat sederhana: login → Scan → arahkan kamera →
+alur kerja mereka jadi sangat sederhana: login → Scan atau Input Manual →
 konfirmasi jumlah. Cocok dipakai langsung dari HP di lapangan.
 
-> Kalau kamera tidak muncul/gagal diakses: pastikan browser diberi izin
-> kamera (cek ikon gembok di address bar), dan pastikan halaman diakses
-> lewat HTTPS atau `localhost`.
+> **Kalau kamera tidak muncul/gagal diakses**, ini urutan pengecekan yang
+> paling sering jadi penyebabnya:
+> 1. **Izin kamera browser** — cek ikon gembok/info di address bar, pastikan
+>    "Camera" di-allow untuk domain aplikasi ini
+> 2. **HTTPS wajib** — kamera browser hanya bisa diakses dari halaman HTTPS
+>    (domain `*.vercel.app` sudah otomatis HTTPS) atau `localhost` saat
+>    development. Kalau kamu buka lewat alamat IP lokal (`http://192.168.x.x`)
+>    tanpa HTTPS, kamera **tidak akan bisa diakses** — pakai `localhost` di
+>    komputer yang sama, atau akses lewat URL Vercel
+> 3. **Kamera dipakai aplikasi lain** — tutup aplikasi kamera/video call lain
+>    yang mungkin masih memegang akses kamera
+> 4. Kalau tetap gagal, pakai **Input Manual** sebagai alternatif — fungsinya
+>    sama, tanpa perlu kamera sama sekali
 
 ---
 
@@ -458,9 +481,16 @@ untuk detail error-nya. Sebagai alternatif sementara, pakai cara lama
 (Bagian 10) lewat Supabase Dashboard.
 
 **Kamera tidak bisa diakses saat scan**
-→ Pastikan mengakses lewat HTTPS (atau `localhost` saat development), dan
-izin kamera browser sudah di-allow. Di HP, pastikan browser (Chrome/Safari)
-punya izin kamera di pengaturan sistem.
+→ Ini yang paling sering jadi penyebab, cek berurutan:
+1. Izin kamera browser belum di-allow (cek ikon gembok di address bar)
+2. Diakses lewat `http://` + alamat IP (bukan HTTPS/`localhost`) — browser
+   memblokir akses kamera di halaman non-secure. Pakai domain Vercel
+   (otomatis HTTPS) atau `localhost` saat development
+3. Kamera sedang dipakai aplikasi lain
+4. HP tidak mendukung `facingMode: environment` — aplikasi sudah otomatis
+   fallback ke kamera lain yang tersedia, tapi kalau tetap gagal, pakai
+   tombol **✍️ Input Manual** sebagai alternatif (tidak butuh kamera sama
+   sekali)
 
 **Nomor Bukti/kolom baru tidak muncul di form**
 → File `03_nomor_bukti.sql` belum dijalankan, jalankan lewat SQL Editor.

@@ -9,50 +9,87 @@ export default function ScanKeluar() {
   const { profile, isAdmin, user } = useAuth()
   const [warehouses, setWarehouses] = useState([])
   const [selectedWarehouse, setSelectedWarehouse] = useState('')
-  const [scanning, setScanning] = useState(false)
+
+  const [mode, setMode] = useState('idle') // 'idle' | 'scanning' | 'manual'
   const [scannedItem, setScannedItem] = useState(null) // { item, stockRow, currentStock }
   const [qty, setQty] = useState(1)
   const [message, setMessage] = useState(null)
   const [submitting, setSubmitting] = useState(false)
-  const scannerRef = useRef(null)
 
+  const [items, setItems] = useState([])
+  const [manualItemId, setManualItemId] = useState('')
+  const [manualSearch, setManualSearch] = useState('')
+
+  const scannerRef = useRef(null)
   const warehouseId = isAdmin ? selectedWarehouse : profile?.warehouse_id
 
   useEffect(() => {
     if (isAdmin) loadWarehouses()
+    loadItems()
     return () => {
       stopScan()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Baru mulai kamera SETELAH elemen #scan-reader benar-benar ter-render
+  // (kalau dipanggil di tick yang sama dengan setMode('scanning'), div-nya
+  // masih dalam kondisi tersembunyi di banyak browser HP -> kamera gagal muncul).
+  useEffect(() => {
+    if (mode === 'scanning') {
+      startCamera()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode])
+
   async function loadWarehouses() {
     const { data } = await supabase.from('warehouses').select('id, nama_gudang').order('nama_gudang')
     setWarehouses(data ?? [])
   }
 
-  async function startScan() {
+  async function loadItems() {
+    const { data } = await supabase.from('posm_items').select('id, nama, kode_posm, satuan').order('nama')
+    setItems(data ?? [])
+  }
+
+  function handleStartScanClick() {
     if (!warehouseId) {
       setMessage({ type: 'error', text: 'Pilih gudang terlebih dahulu.' })
       return
     }
     setMessage(null)
     setScannedItem(null)
+    setMode('scanning')
+  }
 
+  async function startCamera() {
     const html5Qr = new Html5Qrcode(READER_ELEMENT_ID)
     scannerRef.current = html5Qr
-    setScanning(true)
+
+    const config = { fps: 10, qrbox: { width: 260, height: 160 } }
 
     try {
-      await html5Qr.start(
-        { facingMode: 'environment' },
-        { fps: 10, qrbox: { width: 260, height: 160 } },
-        handleScanSuccess,
-        () => {} // diabaikan: dipanggil tiap frame yang belum berhasil decode
-      )
-    } catch (e) {
-      setMessage({ type: 'error', text: 'Gagal mengakses kamera. Pastikan izin kamera diaktifkan di browser.' })
-      setScanning(false)
+      // Coba kamera belakang dulu (umum untuk HP)
+      await html5Qr.start({ facingMode: 'environment' }, config, handleScanSuccess, () => {})
+    } catch (e1) {
+      try {
+        // Fallback: beberapa HP/laptop tidak punya kamera yang cocok
+        // dengan facingMode "environment" (mis. laptop, atau HP tertentu).
+        // Coba pakai daftar kamera yang tersedia.
+        const cameras = await Html5Qrcode.getCameras()
+        if (!cameras || cameras.length === 0) {
+          throw new Error('Tidak ada kamera terdeteksi di perangkat ini.')
+        }
+        await html5Qr.start(cameras[0].id, config, handleScanSuccess, () => {})
+      } catch (e2) {
+        setMessage({
+          type: 'error',
+          text:
+            'Gagal mengakses kamera. Pastikan: (1) izin kamera diaktifkan untuk browser ini, ' +
+            '(2) halaman diakses lewat HTTPS atau localhost, (3) kamera tidak sedang dipakai aplikasi lain.',
+        })
+        setMode('idle')
+      }
     }
   }
 
@@ -66,21 +103,45 @@ export default function ScanKeluar() {
       }
       scannerRef.current = null
     }
-    setScanning(false)
+    setMode((m) => (m === 'scanning' ? 'idle' : m))
   }
 
   async function handleScanSuccess(decodedText) {
     await stopScan()
+    await lookupAndShowItem({ kode_posm: decodedText.trim() })
+  }
 
-    const { data: item } = await supabase
-      .from('posm_items')
-      .select('id, nama, kode_posm, satuan')
-      .eq('kode_posm', decodedText.trim())
-      .maybeSingle()
-
-    if (!item) {
-      setMessage({ type: 'error', text: `Kode "${decodedText}" tidak ditemukan di Master POSM.` })
+  async function handleManualSubmit(e) {
+    e.preventDefault()
+    if (!manualItemId) {
+      setMessage({ type: 'error', text: 'Pilih item terlebih dahulu.' })
       return
+    }
+    if (!warehouseId) {
+      setMessage({ type: 'error', text: 'Pilih gudang terlebih dahulu.' })
+      return
+    }
+    const item = items.find((it) => String(it.id) === String(manualItemId))
+    if (!item) return
+    await lookupAndShowItem(item)
+  }
+
+  async function lookupAndShowItem(itemHint) {
+    setMessage(null)
+
+    let item = itemHint
+    // Kalau dari hasil scan, kita cuma punya kode_posm — ambil detail lengkapnya.
+    if (!item.id) {
+      const { data } = await supabase
+        .from('posm_items')
+        .select('id, nama, kode_posm, satuan')
+        .eq('kode_posm', item.kode_posm)
+        .maybeSingle()
+      if (!data) {
+        setMessage({ type: 'error', text: `Kode "${item.kode_posm}" tidak ditemukan di Master POSM.` })
+        return
+      }
+      item = data
     }
 
     const { data: stockRow } = await supabase
@@ -116,7 +177,7 @@ export default function ScanKeluar() {
       warehouse_id: warehouseId,
       tipe: 'keluar',
       jumlah: jumlahInput,
-      keterangan: `Scan barcode oleh ${profile?.nama ?? 'user'}`,
+      keterangan: `${mode === 'manual' ? 'Input manual' : 'Scan barcode'} oleh ${profile?.nama ?? 'user'}`,
       created_by: user.id,
     })
 
@@ -139,14 +200,28 @@ export default function ScanKeluar() {
 
     setMessage({ type: 'success', text: `Berhasil. Stok "${scannedItem.item.nama}" sekarang: ${stokBaru}.` })
     setScannedItem(null)
+    setManualItemId('')
+    setManualSearch('')
+    setMode('idle')
   }
+
+  function handleCancel() {
+    setScannedItem(null)
+    setMessage(null)
+  }
+
+  const filteredManualItems = items.filter(
+    (it) =>
+      it.nama.toLowerCase().includes(manualSearch.toLowerCase()) ||
+      it.kode_posm.toLowerCase().includes(manualSearch.toLowerCase())
+  )
 
   return (
     <div>
       <div className="mb-6">
         <h1 className="font-display font-bold text-2xl">Scan Stok Keluar</h1>
         <p className="text-black/45 text-sm mt-1">
-          Scan barcode item POSM untuk langsung mengurangi stok.
+          Scan barcode, atau pilih item secara manual, untuk langsung mengurangi stok.
         </p>
       </div>
 
@@ -157,7 +232,7 @@ export default function ScanKeluar() {
             className="input"
             value={selectedWarehouse}
             onChange={(e) => setSelectedWarehouse(e.target.value)}
-            disabled={scanning}
+            disabled={mode === 'scanning'}
           >
             <option value="">Pilih gudang...</option>
             {warehouses.map((w) => (
@@ -174,18 +249,66 @@ export default function ScanKeluar() {
       )}
 
       <div className="card p-6 max-w-md">
-        <div id={READER_ELEMENT_ID} className={scanning ? 'rounded-lg overflow-hidden mb-4' : 'hidden'} />
-
-        {!scanning && !scannedItem && (
-          <button onClick={startScan} className="btn-primary w-full">
-            📷 Mulai Scan
-          </button>
+        {/* Pilihan mode: hanya tampil kalau belum ada item terpilih & tidak sedang scanning */}
+        {mode === 'idle' && !scannedItem && (
+          <div className="grid grid-cols-2 gap-2 mb-2">
+            <button onClick={handleStartScanClick} className="btn-primary">
+              📷 Scan Barcode
+            </button>
+            <button onClick={() => { setMode('manual'); setMessage(null) }} className="btn-secondary">
+              ✍️ Input Manual
+            </button>
+          </div>
         )}
 
-        {scanning && (
+        {/* Area kamera - selalu di-render (supaya elemen #scan-reader ada di DOM
+            sebelum kamera dinyalakan), tapi disembunyikan kalau tidak dipakai. */}
+        <div
+          id={READER_ELEMENT_ID}
+          className={mode === 'scanning' ? 'rounded-lg overflow-hidden mb-4' : 'hidden'}
+        />
+
+        {mode === 'scanning' && (
           <button onClick={stopScan} className="btn-secondary w-full">
             Batalkan Scan
           </button>
+        )}
+
+        {mode === 'manual' && !scannedItem && (
+          <form onSubmit={handleManualSubmit} className="space-y-3">
+            <div>
+              <label className="label">Cari Item</label>
+              <input
+                className="input"
+                placeholder="Ketik nama atau kode POSM..."
+                value={manualSearch}
+                onChange={(e) => setManualSearch(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="label">Pilih Item</label>
+              <select
+                className="input"
+                value={manualItemId}
+                onChange={(e) => setManualItemId(e.target.value)}
+                size={Math.min(6, Math.max(3, filteredManualItems.length))}
+              >
+                {filteredManualItems.map((it) => (
+                  <option key={it.id} value={it.id}>{it.kode_posm} — {it.nama}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="btn-secondary flex-1"
+                onClick={() => { setMode('idle'); setManualItemId(''); setManualSearch('') }}
+              >
+                Batal
+              </button>
+              <button type="submit" className="btn-primary flex-1">Lanjut</button>
+            </div>
+          </form>
         )}
 
         {scannedItem && (
@@ -210,10 +333,7 @@ export default function ScanKeluar() {
             </div>
 
             <div className="flex gap-2">
-              <button
-                className="btn-secondary flex-1"
-                onClick={() => { setScannedItem(null); setMessage(null) }}
-              >
+              <button className="btn-secondary flex-1" onClick={handleCancel}>
                 Batal
               </button>
               <button
