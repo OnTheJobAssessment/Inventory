@@ -10,8 +10,9 @@ function BarcodePreview({ item }) {
 
   useEffect(() => {
     if (!item?.kode_posm) return
+    const scanUrl = `${window.location.origin}/scan?kode=${encodeURIComponent(item.kode_posm)}`
     if (qrCanvasRef.current) {
-      QRCode.toCanvas(qrCanvasRef.current, item.kode_posm, { width: 110, margin: 1 }, (err) => {
+      QRCode.toCanvas(qrCanvasRef.current, scanUrl, { width: 110, margin: 1 }, (err) => {
         if (err) console.error('Gagal membuat QR code untuk', item.kode_posm, err)
       })
     }
@@ -68,8 +69,12 @@ async function generateBarcodeSheetPdf(items) {
     doc.setDrawColor(190)
     doc.roundedRect(x, y, COL_WIDTH, BOX_HEIGHT, 2, 2)
 
-    // QR code (utama, dibaca kamera HP)
-    const qrDataUrl = await QRCode.toDataURL(item.kode_posm, { width: 300, margin: 1 })
+    // QR code (utama, dibaca kamera HP) - isinya LINK ke halaman scan aplikasi,
+    // bukan cuma kode item. Supaya kalau discan pakai aplikasi kamera bawaan HP
+    // (bukan scanner di dalam web ini), browser langsung terbuka menuju halaman
+    // input stok keluar untuk item ini (minta login dulu kalau belum login).
+    const scanUrl = `${window.location.origin}/scan?kode=${encodeURIComponent(item.kode_posm)}`
+    const qrDataUrl = await QRCode.toDataURL(scanUrl, { width: 300, margin: 1 })
     const qrSize = 46
     doc.addImage(qrDataUrl, 'PNG', x + (COL_WIDTH - qrSize) / 2, y + 5, qrSize, qrSize)
 

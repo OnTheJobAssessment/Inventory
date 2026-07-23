@@ -23,10 +23,13 @@ bawah — bagian ini cuma ringkasan/checklist):
    lihat [Bagian 3](#3-deploy-edge-function-create-user)
 3. **Tarik kode terbaru & install ulang dependency** (`npm install`) — ada
    library baru: `jspdf`, `jsbarcode`, `html5-qrcode`, `qrcode`
-4. **Push & redeploy ke Vercel** seperti biasa (`git push`)
-5. **Cetak ulang label barcode** yang lama lewat menu Cetak Barcode — label
-   versi sebelumnya (cuma CODE128) tetap bisa discan tapi kurang andal lewat
-   kamera HP; versi baru menambahkan QR code yang jauh lebih mudah dibaca
+4. ⚠️ **Pastikan file `vercel.json` ikut ter-deploy** — file baru ini WAJIB
+   supaya link QR code (`/scan?kode=...`) tidak menampilkan halaman 404 kalau
+   dibuka langsung dari aplikasi kamera HP. Kalau kamu setup project Vercel-nya
+   manual (bukan lewat Git), cek [Bagian 8](#8-deploy-ke-vercel)
+5. **Push & redeploy ke Vercel** seperti biasa (`git push`)
+6. **Cetak ulang label barcode** yang lama lewat menu Cetak Barcode — QR
+   code-nya sekarang berisi link, bukan cuma kode (lihat [Bagian 11](#11-cetak--scan-barcode))
 
 Fitur-fitur baru yang ditambahkan:
 
@@ -44,6 +47,7 @@ Fitur-fitur baru yang ditambahkan:
 | 🆕 Input Manual Stok Keluar | Scan Stok Keluar | Alternatif kalau scan tidak memungkinkan — pilih item dari daftar, tidak perlu kamera |
 | 🆕 Scan pakai QR code | Scan Stok Keluar, Cetak Barcode | Format utama diganti dari barcode 1D ke QR code — jauh lebih andal dibaca kamera HP dibanding barcode garis-garis |
 | 🆕 Download Kartu Stok dari Scan | Scan Stok Keluar | Setelah scan/pilih item, ada tombol untuk langsung download Kartu Stok PDF-nya — bisa dipakai frontliner juga |
+| 🆕 Scan pakai kamera bawaan HP (deep link) | Cetak Barcode, Scan Stok Keluar | QR code sekarang berisi link ke halaman Scan — bisa discan pakai aplikasi kamera apa saja (tidak harus buka app dulu), otomatis minta login kalau belum, lalu langsung ke form input untuk item itu |
 | Perbaikan kamera scan di HP | Scan Stok Keluar | Perbaikan bug render + fallback otomatis kalau kamera belakang tidak terdeteksi |
 | Tampilan responsif | Seluruh aplikasi | Sidebar jadi menu hamburger di HP/tablet, tabel bisa discroll |
 
@@ -333,6 +337,14 @@ ulang — tidak perlu upload manual lagi.
 > mengizinkan akses kamera di halaman **HTTPS** (atau `localhost` saat
 > development). Domain `*.vercel.app` sudah otomatis HTTPS, jadi aman.
 
+> ⚠️ **Penting:** project ini punya file `vercel.json` di root folder yang
+> mengarahkan semua URL ke `index.html` (wajib untuk aplikasi React seperti
+> ini, apalagi buat fitur link QR code di Bagian 11). Selama kamu deploy
+> lewat **import dari GitHub** seperti langkah di atas, file ini otomatis
+> kebaca tanpa perlu setting tambahan apapun. Cuma perlu diperhatikan kalau
+> kamu pernah mengatur "Output Directory" atau konfigurasi custom lain secara
+> manual di Vercel — pastikan tidak menimpa/mengabaikan `vercel.json` ini.
+
 ---
 
 ## 9. Cara Pakai Aplikasi
@@ -431,6 +443,32 @@ Tombol download ini juga tersedia untuk role **Frontliner** — jadi mereka
 bisa scan/pilih item lalu langsung cek atau simpan kartu stoknya sendiri di
 lapangan, tanpa perlu akses ke halaman Stok Gudang.
 
+**Scan pakai aplikasi kamera bawaan HP (tanpa buka app dulu):**
+
+QR code di label sekarang berisi **link**, bukan cuma kode item. Jadi selain
+scan lewat halaman Scan Stok Keluar di dalam aplikasi (cara di atas), kamu
+juga bisa scan langsung pakai aplikasi kamera bawaan HP (atau app scan
+barcode apapun):
+
+1. Buka aplikasi kamera HP (tidak perlu buka web POSM Inventory dulu)
+2. Arahkan ke QR code di label
+3. HP biasanya menampilkan notifikasi/banner link — ketuk untuk membukanya
+4. Browser terbuka menuju aplikasi:
+   - **Kalau belum login** → diarahkan ke halaman Login dulu. Setelah login
+     berhasil, otomatis lanjut ke langkah berikutnya (tidak perlu scan ulang)
+   - **Kalau sudah login** → langsung ke form input stok keluar
+5. Detail item langsung muncul (untuk admin: pilih gudang dulu kalau belum)
+   → isi jumlah → **Konfirmasi Keluar**
+
+Alur ini paling praktis untuk role **Frontliner**: cukup scan QR pakai kamera
+HP seperti biasa, login sekali di awal (browser biasanya mengingat sesi
+login), lalu tiap scan berikutnya langsung ke form tanpa buka aplikasi
+manual.
+
+> Barcode CODE128 di bawah QR code isinya tetap kode polos (bukan link) —
+> jadi kalau discan pakai scanner laser/genggam biasa, hasilnya tetap bisa
+> dipakai normal di halaman Scan (scanner tsb mengetik kode itu sebagai teks).
+
 **Input manual (kalau tidak ada barcode / kamera bermasalah):**
 
 1. Buka menu **Scan Stok Keluar**
@@ -527,6 +565,18 @@ untuk detail error-nya. Sebagai alternatif sementara, pakai cara lama
 
 **Nomor Bukti/kolom baru tidak muncul di form**
 → File `03_nomor_bukti.sql` belum dijalankan, jalankan lewat SQL Editor.
+
+**Link QR code (`/scan?kode=...`) malah muncul halaman 404 "NOT_FOUND"**
+→ File `vercel.json` belum ikut ter-deploy, atau konfigurasi Vercel-nya
+menimpa pengaturan default. Cek di repo GitHub kamu apakah file `vercel.json`
+ada di root folder (sejajar dengan `package.json`). Kalau belum ada, tambahkan
+lagi lalu `git push` supaya Vercel redeploy.
+
+**Habis scan QR & login, tidak diarahkan balik ke form input item**
+→ Pastikan kode di `ProtectedRoute.jsx` dan `Login.jsx` sudah versi terbaru
+(kirim `state: { from: location }` saat redirect ke login, lalu Login.jsx
+membaca `location.state?.from` untuk redirect balik). Kalau masih pakai kode
+versi lama, update dulu ke versi ini.
 
 **Build gagal di Vercel**
 → Buka tab **Deployments → (deployment yang gagal) → Build Logs** di

@@ -11,8 +11,13 @@ export default function Login() {
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
+  // Kalau user diarahkan ke sini oleh ProtectedRoute (mis. habis scan QR
+  // barcode yang link-nya ke /scan?kode=...), balikin ke sana setelah login.
+  const from = location.state?.from
+  const redirectTo = from ? `${from.pathname}${from.search ?? ''}` : '/'
+
   if (!loading && user) {
-    return <Navigate to="/" replace />
+    return <Navigate to={redirectTo} replace />
   }
 
   async function handleSubmit(e) {
@@ -25,7 +30,7 @@ export default function Login() {
       setError('Email atau password salah.')
       return
     }
-    navigate('/')
+    navigate(redirectTo)
   }
 
   return (

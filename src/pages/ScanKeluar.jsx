@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
@@ -6,8 +7,27 @@ import { fetchAndPrintKartuStok } from '../lib/kartuStok'
 
 const READER_ELEMENT_ID = 'scan-reader'
 
+// QR code di label sekarang isinya LINK (https://.../scan?kode=POSM-001), bukan
+// cuma kode polos - supaya bisa discan pakai aplikasi kamera bawaan HP dan
+// langsung membuka halaman ini. Tapi hasil scan dari kamera DALAM aplikasi ini
+// (atau barcode CODE128 lama) masih berupa kode polos. Fungsi ini menangani
+// dua-duanya: kalau hasil scan berupa URL, ambil parameter "kode"-nya; kalau
+// bukan, anggap itu sendiri sudah kode POSM.
+function extractKodePosm(scannedText) {
+  const text = scannedText.trim()
+  try {
+    const url = new URL(text)
+    const kode = url.searchParams.get('kode')
+    if (kode) return kode
+  } catch {
+    // bukan URL, lanjut pakai teks aslinya
+  }
+  return text
+}
+
 export default function ScanKeluar() {
   const { profile, isAdmin, user } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [warehouses, setWarehouses] = useState([])
   const [selectedWarehouse, setSelectedWarehouse] = useState('')
 
@@ -46,6 +66,18 @@ export default function ScanKeluar() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode])
+
+  // Dibuka lewat link QR (mis. dari aplikasi kamera bawaan HP) yang membawa
+  // ?kode=... di URL. Begitu gudang sudah diketahui (otomatis untuk staff/
+  // frontliner, atau setelah admin pilih gudang), langsung cari & tampilkan
+  // item itu tanpa perlu scan/pilih manual lagi.
+  const kodeFromUrl = searchParams.get('kode')
+  useEffect(() => {
+    if (kodeFromUrl && warehouseId && !scannedItem) {
+      lookupAndShowItem({ kode_posm: kodeFromUrl })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kodeFromUrl, warehouseId])
 
   async function loadWarehouses() {
     const { data } = await supabase.from('warehouses').select('id, nama_gudang').order('nama_gudang')
@@ -121,7 +153,7 @@ export default function ScanKeluar() {
 
   async function handleScanSuccess(decodedText) {
     await stopScan()
-    await lookupAndShowItem({ kode_posm: decodedText.trim() })
+    await lookupAndShowItem({ kode_posm: extractKodePosm(decodedText) })
   }
 
   async function handleManualSubmit(e) {
@@ -216,11 +248,13 @@ export default function ScanKeluar() {
     setManualItemId('')
     setManualSearch('')
     setMode('idle')
+    if (kodeFromUrl) setSearchParams({}, { replace: true })
   }
 
   function handleCancel() {
     setScannedItem(null)
     setMessage(null)
+    if (kodeFromUrl) setSearchParams({}, { replace: true })
   }
 
   async function handleDownloadKartuStok() {
@@ -263,6 +297,12 @@ export default function ScanKeluar() {
               <option key={w.id} value={w.id}>{w.nama_gudang}</option>
             ))}
           </select>
+          {kodeFromUrl && !warehouseId && (
+            <p className="text-xs text-amber-700 mt-2">
+              Dibuka dari QR code item <span className="font-mono">{kodeFromUrl}</span> — pilih
+              gudang dulu supaya item-nya langsung ditampilkan.
+            </p>
+          )}
         </div>
       )}
 
