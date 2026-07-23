@@ -38,7 +38,8 @@ Fitur-fitur baru yang ditambahkan:
 | Nomor Bukti di transaksi | Input Mutasi, Transfer | Field baru untuk nomor surat jalan/bukti serah terima |
 | Tambah user dari web | Manajemen Pengguna | Admin bisa buat akun baru tanpa ke Supabase Dashboard |
 | Role baru: Frontliner | Manajemen Pengguna | Role khusus yang cuma bisa akses halaman Scan |
-| Cetak Barcode | Cetak Barcode (menu baru, admin) | 🆕 Generate & cetak label berisi QR code (utama) + barcode CODE128 (cadangan) per item POSM |
+| Cetak Barcode | Cetak Barcode (menu baru, admin) | Generate label berisi QR code (utama) + barcode CODE128 (cadangan) per item POSM |
+| 🆕 Cetak jadi PDF, bukan print browser | Cetak Barcode | Tombol cetak diganti jadi "Download PDF" — hasil satu file PDF, layout tetap 2 kolom per halaman A4, satu kotak per item |
 | Scan Stok Keluar | Scan Stok Keluar (menu baru) | Scan barcode pakai kamera HP → langsung kurangi stok |
 | 🆕 Input Manual Stok Keluar | Scan Stok Keluar | Alternatif kalau scan tidak memungkinkan — pilih item dari daftar, tidak perlu kamera |
 | 🆕 Scan pakai QR code | Scan Stok Keluar, Cetak Barcode | Format utama diganti dari barcode 1D ke QR code — jauh lebih andal dibaca kamera HP dibanding barcode garis-garis |
@@ -401,10 +402,19 @@ ulang — tidak perlu upload manual lagi.
 **Mencetak label (admin):**
 
 1. Buka menu **Cetak Barcode**
-2. Pilih item yang mau dicetak (default: semua tercentang)
-3. Klik **🖨 Cetak** — browser akan membuka dialog print. Tiap label berisi
-   QR code + barcode CODE128, keduanya berisi kode POSM item tersebut
-4. Tempelkan hasil cetakan (bisa print ke label sticker) ke fisik barang/POSM
+2. Pilih item yang mau dicetak (default: semua tercentang) — bagian
+   "Pratinjau" di bawah menampilkan tampilan tiap label
+3. Klik **⬇ Download PDF** — satu file PDF otomatis terunduh, berisi semua
+   item yang dipilih, disusun **2 label berdampingan per baris**, beberapa
+   baris ke bawah mengikuti ukuran kertas A4 (otomatis lanjut ke halaman
+   berikutnya kalau item-nya banyak). Setiap item punya kotaknya sendiri
+   dengan QR code + barcode CODE128 + nama item
+4. Print file PDF itu seperti biasa (bisa ke label sticker) lalu tempelkan
+   ke fisik barang/POSM
+
+> Beda dengan sebelumnya (yang pakai dialog print browser), sekarang hasilnya
+> murni file PDF — jadi tampilannya konsisten di printer manapun dan gampang
+> dibagikan/disimpan.
 
 **Scan untuk kurangi stok (semua role):**
 
