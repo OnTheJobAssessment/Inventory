@@ -15,41 +15,38 @@ Kalau kamu **sudah pernah deploy** versi sebelumnya, ini daftar hal yang
 perlu dilakukan ulang (langkah lengkapnya ada di masing-masing bagian di
 bawah — bagian ini cuma ringkasan/checklist):
 
-1. **Jalankan 3 file SQL baru** di Supabase SQL Editor (urutannya penting):
-   `supabase/03_nomor_bukti.sql`, `supabase/04_fix_transfer_rls.sql` →
+1. **Jalankan 1 file SQL baru**: `supabase/05_cascade_delete_user.sql` →
    lihat [Bagian 2](#2-persiapan-supabase)
-2. **Deploy Edge Function `create-user`** supaya admin bisa tambah user
-   langsung dari web (tanpa buka Supabase Dashboard) →
-   lihat [Bagian 3](#3-deploy-edge-function-create-user)
-3. **Tarik kode terbaru & install ulang dependency** (`npm install`) — ada
-   library baru: `jspdf`, `jsbarcode`, `html5-qrcode`, `qrcode`
-4. ⚠️ **Pastikan file `vercel.json` ikut ter-deploy** — file baru ini WAJIB
-   supaya link QR code (`/scan?kode=...`) tidak menampilkan halaman 404 kalau
-   dibuka langsung dari aplikasi kamera HP. Kalau kamu setup project Vercel-nya
-   manual (bukan lewat Git), cek [Bagian 8](#8-deploy-ke-vercel)
-5. **Push & redeploy ke Vercel** seperti biasa (`git push`)
-6. **Cetak ulang label barcode** yang lama lewat menu Cetak Barcode — QR
-   code-nya sekarang berisi link, bukan cuma kode (lihat [Bagian 11](#11-cetak--scan-barcode))
+2. **Deploy Edge Function baru: `delete-user`** (selain `create-user` yang
+   sudah ada) → lihat [Bagian 3](#3-deploy-edge-function-create-user--delete-user)
+3. **Tarik kode terbaru & install ulang dependency** (`npm install`) — tidak
+   ada library baru kali ini
+4. **Push & redeploy ke Vercel** seperti biasa (`git push`)
 
-Fitur-fitur baru yang ditambahkan:
+Fitur-fitur baru yang ditambahkan kali ini:
 
 | Fitur | Halaman | Keterangan |
 |---|---|---|
-| Konfirmasi sebelum logout | Semua (tombol "Keluar" di sidebar) | Muncul dialog konfirmasi, tidak langsung logout |
-| Auto-logout setelah idle | Seluruh aplikasi | Otomatis logout kalau tidak ada aktivitas 30 menit |
-| Cetak Kartu Stok (PDF) | Stok Gudang | Tombol "Cetak Kartu Stok" per item, formatnya mengikuti kartu stok fisik (TGL/NOMOR BUKTI/DARI-KEPADA/MUTASI/SALDO) |
-| Nomor Bukti di transaksi | Input Mutasi, Transfer | Field baru untuk nomor surat jalan/bukti serah terima |
-| Tambah user dari web | Manajemen Pengguna | Admin bisa buat akun baru tanpa ke Supabase Dashboard |
-| Role baru: Frontliner | Manajemen Pengguna | Role khusus yang cuma bisa akses halaman Scan |
-| Cetak Barcode | Cetak Barcode (menu baru, admin) | Generate label berisi QR code (utama) + barcode CODE128 (cadangan) per item POSM |
-| 🆕 Cetak jadi PDF, bukan print browser | Cetak Barcode | Tombol cetak diganti jadi "Download PDF" — hasil satu file PDF, layout tetap 2 kolom per halaman A4, satu kotak per item |
-| Scan Stok Keluar | Scan Stok Keluar (menu baru) | Scan barcode pakai kamera HP → langsung kurangi stok |
-| 🆕 Input Manual Stok Keluar | Scan Stok Keluar | Alternatif kalau scan tidak memungkinkan — pilih item dari daftar, tidak perlu kamera |
-| 🆕 Scan pakai QR code | Scan Stok Keluar, Cetak Barcode | Format utama diganti dari barcode 1D ke QR code — jauh lebih andal dibaca kamera HP dibanding barcode garis-garis |
-| 🆕 Download Kartu Stok dari Scan | Scan Stok Keluar | Setelah scan/pilih item, ada tombol untuk langsung download Kartu Stok PDF-nya — bisa dipakai frontliner juga |
-| 🆕 Scan pakai kamera bawaan HP (deep link) | Cetak Barcode, Scan Stok Keluar | QR code sekarang berisi link ke halaman Scan — bisa discan pakai aplikasi kamera apa saja (tidak harus buka app dulu), otomatis minta login kalau belum, lalu langsung ke form input untuk item itu |
-| Perbaikan kamera scan di HP | Scan Stok Keluar | Perbaikan bug render + fallback otomatis kalau kamera belakang tidak terdeteksi |
-| Tampilan responsif | Seluruh aplikasi | Sidebar jadi menu hamburger di HP/tablet, tabel bisa discroll |
+| Hapus pengguna | Manajemen Pengguna | Admin bisa hapus akun langsung dari web (dengan konfirmasi), tidak bisa hapus akun sendiri yang sedang login |
+| Search + list ke bawah | Cetak Barcode | Ada kolom pencarian, daftar item disusun ke bawah (bukan grid ke samping) supaya gampang ditemukan |
+| Item POSM bisa dicari | Input Mutasi, Transfer Antar Gudang | Dropdown item POSM sekarang ada kolom pencarian di atasnya, tidak perlu scroll manual |
+| Kartu ringkasan Dashboard bisa diklik | Dashboard | "Total Stok" → Stok Gudang (admin & staff gudang); "Jenis Item" → Master POSM (admin); "Jumlah Gudang" → Master Gudang (admin) |
+
+<details>
+<summary>Riwayat update sebelumnya (klik untuk lihat)</summary>
+
+- Konfirmasi sebelum logout + auto-logout setelah 30 menit idle
+- Cetak Kartu Stok PDF per item (format kartu stok fisik)
+- Nomor Bukti di transaksi Input Mutasi & Transfer
+- Tambah user dari web lewat Edge Function `create-user`
+- Role baru: Frontliner (cuma bisa akses halaman Scan)
+- Cetak Barcode jadi 1 file PDF (2 kolom per halaman A4), bukan print browser
+- QR code + barcode CODE128 di tiap label, QR jadi format utama (lebih andal buat kamera HP)
+- Scan Stok Keluar: mode kamera + input manual, keduanya bisa langsung download Kartu Stok
+- QR code berisi deep link — bisa discan pakai kamera bawaan HP, otomatis minta login dulu kalau belum, lalu langsung ke form input (butuh `vercel.json` di root project)
+- Perbaikan bug kamera di HP + tampilan responsif penuh (hamburger menu di HP/tablet)
+
+</details>
 
 ---
 
@@ -57,7 +54,7 @@ Fitur-fitur baru yang ditambahkan:
 
 1. [Struktur Project](#1-struktur-project)
 2. [Persiapan Supabase](#2-persiapan-supabase)
-3. [Deploy Edge Function create-user](#3-deploy-edge-function-create-user)
+3. [Deploy Edge Function create-user & delete-user](#3-deploy-edge-function-create-user--delete-user)
 4. [Membuat User Admin Pertama](#4-membuat-user-admin-pertama)
 5. [Setup Project di Komputer Lokal](#5-setup-project-di-komputer-lokal)
 6. [Menjalankan di Local](#6-menjalankan-di-local)
@@ -80,41 +77,46 @@ posm-inventory/
 ├── vite.config.js
 ├── tailwind.config.js
 ├── postcss.config.js
-├── .env.example              ← contoh env var, salin jadi .env
+├── vercel.json                ← rewrite config, wajib untuk deep link QR
+├── .env.example               ← contoh env var, salin jadi .env
 ├── .gitignore
 ├── supabase/
-│   ├── 01_schema.sql          ← skema tabel (referensi, sudah kamu jalankan)
-│   ├── 02_auth_and_rls.sql    ← WAJIB: trigger user baru + RLS policy
-│   ├── 03_nomor_bukti.sql     ← 🆕 WAJIB: kolom nomor bukti transaksi
-│   ├── 04_fix_transfer_rls.sql← 🆕 WAJIB: transfer masuk kebaca gudang tujuan
+│   ├── 01_schema.sql           ← skema tabel (referensi, sudah kamu jalankan)
+│   ├── 02_auth_and_rls.sql     ← WAJIB: trigger user baru + RLS policy
+│   ├── 03_nomor_bukti.sql      ← WAJIB: kolom nomor bukti transaksi
+│   ├── 04_fix_transfer_rls.sql ← WAJIB: transfer masuk kebaca gudang tujuan
+│   ├── 05_cascade_delete_user.sql ← 🆕 WAJIB: hapus user ikut hapus profile
 │   └── functions/
-│       └── create-user/
-│           └── index.ts       ← 🆕 Edge Function: tambah user dari web
+│       ├── create-user/
+│       │   └── index.ts        ← Edge Function: tambah user dari web
+│       └── delete-user/
+│           └── index.ts        ← 🆕 Edge Function: hapus user dari web
 └── src/
-    ├── main.jsx               ← entry point React
-    ├── App.jsx                 ← routing semua halaman
-    ├── index.css                ← styling global (Tailwind) + CSS print
+    ├── main.jsx                ← entry point React
+    ├── App.jsx                  ← routing semua halaman
+    ├── index.css                 ← styling global (Tailwind) + CSS print
     ├── lib/
-    │   ├── supabaseClient.js       ← koneksi ke Supabase
-    │   └── kartuStok.js             ← 🆕 generator PDF Kartu Stok
+    │   ├── supabaseClient.js        ← koneksi ke Supabase
+    │   └── kartuStok.js              ← generator PDF Kartu Stok
     ├── context/
-    │   └── AuthContext.jsx         ← state login, role user, 🆕 auto-logout idle
+    │   └── AuthContext.jsx          ← state login, role user, auto-logout idle
     ├── components/
-    │   ├── ProtectedRoute.jsx      ← proteksi halaman butuh login/admin
-    │   ├── ConfirmDialog.jsx        ← 🆕 dialog konfirmasi (dipakai saat logout)
-    │   └── Layout.jsx               ← sidebar navigasi, 🆕 responsif + role-aware
+    │   ├── ProtectedRoute.jsx       ← proteksi halaman + simpan redirect tujuan
+    │   ├── ConfirmDialog.jsx         ← dialog konfirmasi (logout, hapus user)
+    │   ├── ItemPicker.jsx            ← 🆕 dropdown item POSM yang bisa dicari
+    │   └── Layout.jsx                ← sidebar navigasi, responsif + role-aware
     └── pages/
-        ├── Login.jsx
-        ├── Dashboard.jsx
-        ├── Stock.jsx                ← lihat stok per gudang, 🆕 cetak Kartu Stok
-        ├── StockMovement.jsx        ← input stok masuk/keluar/adjustment
-        ├── Transfer.jsx             ← transfer antar gudang (admin)
-        ├── History.jsx              ← riwayat transaksi
-        ├── MasterPosm.jsx           ← CRUD item POSM & kategori (admin)
-        ├── MasterGudang.jsx         ← CRUD gudang (admin)
-        ├── UserManagement.jsx       ← atur user, 🆕 form tambah user langsung
-        ├── BarcodePrint.jsx         ← 🆕 cetak label barcode (admin)
-        └── ScanKeluar.jsx           ← 🆕 scan barcode untuk kurangi stok
+        ├── Login.jsx                ← 🆕 redirect balik ke halaman tujuan setelah login
+        ├── Dashboard.jsx            ← 🆕 kartu ringkasan bisa diklik
+        ├── Stock.jsx                 ← lihat stok per gudang, cetak Kartu Stok
+        ├── StockMovement.jsx        ← input stok masuk/keluar/adjustment, 🆕 item bisa dicari
+        ├── Transfer.jsx              ← transfer antar gudang (admin), 🆕 item bisa dicari
+        ├── History.jsx               ← riwayat transaksi
+        ├── MasterPosm.jsx            ← CRUD item POSM & kategori (admin)
+        ├── MasterGudang.jsx          ← CRUD gudang (admin)
+        ├── UserManagement.jsx        ← atur user, tambah & 🆕 hapus user langsung
+        ├── BarcodePrint.jsx          ← cetak label barcode (admin), 🆕 search + list ke bawah
+        └── ScanKeluar.jsx            ← scan barcode/deep link untuk kurangi stok
 ```
 
 ---
@@ -122,16 +124,17 @@ posm-inventory/
 ## 2. Persiapan Supabase
 
 Kamu sudah menjalankan skema dasar (`categories`, `posm_items`, `warehouses`,
-`stock`, `stock_movements`, `profiles`). Sekarang jalankan **tiga file SQL**
+`stock`, `stock_movements`, `profiles`). Sekarang jalankan **file-file SQL**
 di **SQL Editor** Supabase, **satu per satu, sesuai urutan nomornya**:
 
 1. Buka project Supabase kamu → menu **SQL Editor** → **New query**
 2. Copy-paste isi `supabase/02_auth_and_rls.sql` → klik **Run**
 3. New query lagi → copy-paste isi `supabase/03_nomor_bukti.sql` → **Run**
 4. New query lagi → copy-paste isi `supabase/04_fix_transfer_rls.sql` → **Run**
+5. New query lagi → copy-paste isi `supabase/05_cascade_delete_user.sql` → **Run**
 
 Kalau kamu instalasi baru (belum pernah jalankan `02_auth_and_rls.sql` sama
-sekali), cukup jalankan ketiganya berurutan dari nomor 02 — tidak perlu
+sekali), cukup jalankan semuanya berurutan dari nomor 02 — tidak perlu
 langkah tambahan lain.
 
 Ringkasan isi masing-masing file:
@@ -141,6 +144,7 @@ Ringkasan isi masing-masing file:
 | `02_auth_and_rls.sql` | Kolom `email` di `profiles`, trigger otomatis bikin profile saat user baru dibuat, dan Row Level Security dasar (staff hanya akses gudangnya) |
 | `03_nomor_bukti.sql` | Tambah kolom `nomor_bukti` di `stock_movements` — dipakai di form Input Mutasi/Transfer dan tercetak di Kartu Stok |
 | `04_fix_transfer_rls.sql` | Perbaikan RLS supaya gudang **tujuan** transfer juga bisa lihat transaksi transfer masuk (sebelumnya cuma gudang asal yang bisa lihat) |
+| `05_cascade_delete_user.sql` | Supaya menghapus user (lewat Edge Function `delete-user`) otomatis ikut menghapus baris `profiles`-nya, tidak jadi data nyangkut |
 
 > ⚠️ Tanpa `02_auth_and_rls.sql`, tabel-tabel kamu **tidak punya proteksi
 > akses sama sekali**. Ini wajib, jangan dilewati.
@@ -157,12 +161,12 @@ di Edge Function (lihat Bagian 3), bukan di kode React.
 
 ---
 
-## 3. Deploy Edge Function create-user
+## 3. Deploy Edge Function create-user & delete-user
 
-Fitur "Tambah User" di halaman Manajemen Pengguna butuh **Edge Function** —
-kode kecil yang jalan di server Supabase (bukan di browser), supaya
-`service_role key` yang dibutuhkan untuk membuat akun tidak pernah terekspos
-ke publik.
+Fitur "Tambah User" dan "Hapus" di halaman Manajemen Pengguna butuh **Edge
+Function** — kode kecil yang jalan di server Supabase (bukan di browser),
+supaya `service_role key` yang dibutuhkan untuk membuat/menghapus akun tidak
+pernah terekspos ke publik.
 
 **Prasyarat:** install Supabase CLI kalau belum ada:
 
@@ -185,10 +189,11 @@ npm install -g supabase
    supabase link --project-ref xxxxxxxxxxxx
    ```
 
-3. Deploy function-nya:
+3. Deploy kedua function-nya:
 
    ```bash
    supabase functions deploy create-user
+   supabase functions deploy delete-user
    ```
 
 Supabase otomatis menyediakan `SUPABASE_URL`, `SUPABASE_ANON_KEY`, dan
@@ -196,8 +201,9 @@ Supabase otomatis menyediakan `SUPABASE_URL`, `SUPABASE_ANON_KEY`, dan
 Function — **tidak perlu di-set manual**.
 
 **Verifikasi berhasil:** buka **Edge Functions** di dashboard Supabase,
-pastikan `create-user` muncul dengan status aktif. Kalau nanti tombol
-"Tambah User" di web gagal, cek log-nya di sini juga (tab **Logs**).
+pastikan `create-user` dan `delete-user` muncul dengan status aktif. Kalau
+nanti tombol "Tambah User"/"Hapus" di web gagal, cek log-nya di sini juga
+(tab **Logs**).
 
 > 💡 Kalau kamu belum familiar dengan terminal/CLI dan ingin skip fitur ini
 > dulu, tidak masalah — semua fitur lain tetap jalan normal, kamu tinggal
@@ -396,6 +402,18 @@ ulang — tidak perlu upload manual lagi.
    pilih **Gudang**
 5. Klik **Simpan**
 
+**Menghapus user:**
+
+1. Login sebagai admin → buka **Manajemen Pengguna**
+2. Klik **Hapus** di baris user yang mau dihapus
+3. Muncul dialog konfirmasi (menyebutkan email user tsb) → klik **Ya, Hapus**
+
+User yang dihapus langsung tidak bisa login lagi. Riwayat transaksi yang
+pernah dia buat tetap tersimpan (tidak ikut terhapus). Admin tidak bisa
+menghapus akunnya sendiri yang sedang dipakai login — tombol Hapus otomatis
+nonaktif untuk baris akun sendiri. Fitur ini juga butuh Edge Function
+(`delete-user`) sudah di-deploy — lihat Bagian 3.
+
 ---
 
 ## 11. Cetak & Scan Barcode
@@ -545,11 +563,11 @@ tersebut, perhatikan kalau ada pesan error merah.
 **Transfer masuk tidak muncul di Riwayat/Kartu Stok gudang tujuan**
 → File `04_fix_transfer_rls.sql` belum dijalankan. Jalankan lewat SQL Editor.
 
-**Tombol "Tambah User" gagal / muncul error**
-→ Edge Function `create-user` belum di-deploy, atau caller bukan admin.
-Cek Bagian 3, lalu cek tab **Logs** di Edge Functions dashboard Supabase
-untuk detail error-nya. Sebagai alternatif sementara, pakai cara lama
-(Bagian 10) lewat Supabase Dashboard.
+**Tombol "Tambah User" atau "Hapus" gagal / muncul error**
+→ Edge Function `create-user`/`delete-user` belum di-deploy, atau caller
+bukan admin. Cek Bagian 3, lalu cek tab **Logs** di Edge Functions dashboard
+Supabase untuk detail error-nya. Sebagai alternatif sementara untuk tambah
+user, pakai cara lama (Bagian 10) lewat Supabase Dashboard.
 
 **Kamera tidak bisa diakses saat scan**
 → Ini yang paling sering jadi penyebab, cek berurutan:

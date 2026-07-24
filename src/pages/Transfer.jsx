@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
+import ItemPicker from '../components/ItemPicker'
 
 export default function Transfer() {
   const { user } = useAuth()
@@ -128,16 +129,11 @@ export default function Transfer() {
       <form onSubmit={handleSubmit} className="card p-6 max-w-xl space-y-4">
         <div>
           <label className="label">Item POSM</label>
-          <select
-            className="input"
+          <ItemPicker
+            items={items}
             value={form.posm_item_id}
-            onChange={(e) => setForm((f) => ({ ...f, posm_item_id: e.target.value }))}
-          >
-            <option value="">Pilih item...</option>
-            {items.map((it) => (
-              <option key={it.id} value={it.id}>{it.kode_posm} — {it.nama}</option>
-            ))}
-          </select>
+            onChange={(val) => setForm((f) => ({ ...f, posm_item_id: val }))}
+          />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

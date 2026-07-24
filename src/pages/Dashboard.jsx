@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 
 export default function Dashboard() {
   const { profile, isAdmin } = useAuth()
+  const navigate = useNavigate()
   const [summary, setSummary] = useState({ totalItem: 0, totalGudang: 0, totalStok: 0 })
   const [lowStock, setLowStock] = useState([])
   const [recentMovements, setRecentMovements] = useState([])
@@ -80,19 +82,34 @@ export default function Dashboard() {
 
       {/* Ringkasan angka */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        <div className="card p-5">
+        <div
+          className={`card p-5 ${
+            profile?.role === 'admin' || profile?.role === 'staff_gudang'
+              ? 'cursor-pointer hover:border-brand-300 hover:shadow-md transition'
+              : ''
+          }`}
+          onClick={() => {
+            if (profile?.role === 'admin' || profile?.role === 'staff_gudang') navigate('/stok')
+          }}
+        >
           <p className="text-xs font-semibold uppercase tracking-wide text-black/40 mb-1">
             Total Stok
           </p>
           <p className="font-display font-bold text-3xl">{loading ? '–' : summary.totalStok}</p>
         </div>
-        <div className="card p-5">
+        <div
+          className={`card p-5 ${isAdmin ? 'cursor-pointer hover:border-brand-300 hover:shadow-md transition' : ''}`}
+          onClick={() => { if (isAdmin) navigate('/master-posm') }}
+        >
           <p className="text-xs font-semibold uppercase tracking-wide text-black/40 mb-1">
             Jenis Item
           </p>
           <p className="font-display font-bold text-3xl">{loading ? '–' : summary.totalItem}</p>
         </div>
-        <div className="card p-5">
+        <div
+          className={`card p-5 ${isAdmin ? 'cursor-pointer hover:border-brand-300 hover:shadow-md transition' : ''}`}
+          onClick={() => { if (isAdmin) navigate('/master-gudang') }}
+        >
           <p className="text-xs font-semibold uppercase tracking-wide text-black/40 mb-1">
             {isAdmin ? 'Jumlah Gudang' : 'Item Stok Rendah'}
           </p>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
+import ItemPicker from '../components/ItemPicker'
 
 const TIPE_OPTIONS = [
   { value: 'masuk', label: 'Stok Masuk', hint: 'Menambah stok (mis. dari kantor pusat / produksi)' },
@@ -142,16 +143,11 @@ export default function StockMovement() {
 
         <div>
           <label className="label">Item POSM</label>
-          <select
-            className="input"
+          <ItemPicker
+            items={items}
             value={form.posm_item_id}
-            onChange={(e) => setForm((f) => ({ ...f, posm_item_id: e.target.value }))}
-          >
-            <option value="">Pilih item...</option>
-            {items.map((it) => (
-              <option key={it.id} value={it.id}>{it.kode_posm} — {it.nama}</option>
-            ))}
-          </select>
+            onChange={(val) => setForm((f) => ({ ...f, posm_item_id: val }))}
+          />
         </div>
 
         {isAdmin ? (

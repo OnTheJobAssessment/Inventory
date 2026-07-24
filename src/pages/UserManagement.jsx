@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { useAuth } from '../context/AuthContext'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 const ROLE_LABELS = {
   admin: 'Admin',
@@ -10,10 +12,13 @@ const ROLE_LABELS = {
 const emptyNewUser = { email: '', password: '', nama: '', role: 'staff_gudang', warehouse_id: '' }
 
 export default function UserManagement() {
+  const { user: currentUser } = useAuth()
   const [profiles, setProfiles] = useState([])
   const [warehouses, setWarehouses] = useState([])
   const [loading, setLoading] = useState(true)
   const [savingId, setSavingId] = useState(null)
+  const [deletingId, setDeletingId] = useState(null)
+  const [confirmDelete, setConfirmDelete] = useState(null) // profile yang mau dihapus
 
   const [showAddForm, setShowAddForm] = useState(false)
   const [newUser, setNewUser] = useState(emptyNewUser)
@@ -89,6 +94,24 @@ export default function UserManagement() {
 
     setAddMessage({ type: 'success', text: 'User baru berhasil dibuat.' })
     setNewUser(emptyNewUser)
+    loadAll()
+  }
+
+  async function handleDeleteUser() {
+    if (!confirmDelete) return
+    setDeletingId(confirmDelete.id)
+    const { data, error } = await supabase.functions.invoke('delete-user', {
+      body: { user_id: confirmDelete.id },
+    })
+    setDeletingId(null)
+
+    if (error || data?.error) {
+      alert('Gagal menghapus user: ' + (data?.error || error.message))
+      setConfirmDelete(null)
+      return
+    }
+
+    setConfirmDelete(null)
     loadAll()
   }
 
@@ -241,13 +264,21 @@ export default function UserManagement() {
                       ))}
                     </select>
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right whitespace-nowrap space-x-2">
                     <button
                       className="btn-secondary py-1.5"
                       disabled={savingId === p.id}
                       onClick={() => saveRow(p)}
                     >
                       {savingId === p.id ? 'Menyimpan...' : 'Simpan'}
+                    </button>
+                    <button
+                      className="text-red-600 hover:underline text-xs font-semibold disabled:opacity-40"
+                      disabled={p.id === currentUser?.id}
+                      title={p.id === currentUser?.id ? 'Tidak bisa menghapus akun sendiri' : ''}
+                      onClick={() => setConfirmDelete(p)}
+                    >
+                      Hapus
                     </button>
                   </td>
                 </tr>
@@ -256,6 +287,16 @@ export default function UserManagement() {
           </tbody>
         </table>
       </div>
+
+      <ConfirmDialog
+        open={!!confirmDelete}
+        title="Hapus pengguna ini?"
+        description={confirmDelete ? `Akun "${confirmDelete.email}" akan dihapus permanen dan tidak bisa login lagi. Riwayat transaksi yang pernah dibuat tetap tersimpan.` : ''}
+        confirmLabel={deletingId ? 'Menghapus...' : 'Ya, Hapus'}
+        danger
+        onConfirm={handleDeleteUser}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   )
 }

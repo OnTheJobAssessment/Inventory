@@ -112,6 +112,7 @@ export default function BarcodePrint() {
   const [selected, setSelected] = useState(new Set())
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     loadItems()
@@ -142,6 +143,11 @@ export default function BarcodePrint() {
   }
 
   const selectedItems = items.filter((it) => selected.has(it.id))
+  const filteredItems = items.filter(
+    (it) =>
+      it.nama.toLowerCase().includes(search.toLowerCase()) ||
+      it.kode_posm.toLowerCase().includes(search.toLowerCase())
+  )
 
   async function handleGeneratePdf() {
     if (selectedItems.length === 0) return
@@ -175,22 +181,32 @@ export default function BarcodePrint() {
       </div>
 
       <div className="card p-4 mb-6">
-        <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-3">
+          <label className="flex items-center gap-2 text-sm font-medium cursor-pointer shrink-0">
+            <input
+              type="checkbox"
+              checked={items.length > 0 && selected.size === items.length}
+              onChange={toggleAll}
+            />
+            Pilih semua ({items.length} item)
+          </label>
           <input
-            type="checkbox"
-            checked={items.length > 0 && selected.size === items.length}
-            onChange={toggleAll}
+            className="input sm:max-w-xs sm:ml-auto"
+            placeholder="Cari nama atau kode POSM..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           />
-          Pilih semua ({items.length} item)
-        </label>
-        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-64 overflow-y-auto">
+        </div>
+        <div className="divide-y divide-black/5 max-h-80 overflow-y-auto border border-black/10 rounded-lg">
           {loading ? (
-            <p className="text-sm text-black/40">Memuat...</p>
+            <p className="text-sm text-black/40 p-3">Memuat...</p>
+          ) : filteredItems.length === 0 ? (
+            <p className="text-sm text-black/40 p-3">Tidak ada item cocok.</p>
           ) : (
-            items.map((it) => (
-              <label key={it.id} className="flex items-center gap-2 text-sm px-2 py-1.5 rounded-lg hover:bg-black/[0.02] cursor-pointer">
+            filteredItems.map((it) => (
+              <label key={it.id} className="flex items-center gap-3 text-sm px-3 py-2.5 hover:bg-black/[0.02] cursor-pointer">
                 <input type="checkbox" checked={selected.has(it.id)} onChange={() => toggle(it.id)} />
-                <span className="font-mono text-xs text-black/40">{it.kode_posm}</span>
+                <span className="font-mono text-xs text-black/40 shrink-0">{it.kode_posm}</span>
                 <span className="truncate">{it.nama}</span>
               </label>
             ))
