@@ -15,26 +15,20 @@ Kalau kamu **sudah pernah deploy** versi sebelumnya, ini daftar hal yang
 perlu dilakukan ulang (langkah lengkapnya ada di masing-masing bagian di
 bawah — bagian ini cuma ringkasan/checklist):
 
-1. **Jalankan 1 file SQL baru**: `supabase/05_cascade_delete_user.sql` →
-   lihat [Bagian 2](#2-persiapan-supabase)
-2. **Deploy Edge Function baru: `delete-user`** (selain `create-user` yang
-   sudah ada) → lihat [Bagian 3](#3-deploy-edge-function-create-user--delete-user)
-3. **Tarik kode terbaru & install ulang dependency** (`npm install`) — tidak
-   ada library baru kali ini
-4. **Push & redeploy ke Vercel** seperti biasa (`git push`)
+1. **Tarik kode terbaru & install ulang dependency** (`npm install`) — tidak
+   ada library atau perubahan database baru kali ini
+2. **Push & redeploy ke Vercel** seperti biasa (`git push`)
 
-Fitur-fitur baru yang ditambahkan kali ini:
+Fitur baru kali ini:
 
 | Fitur | Halaman | Keterangan |
 |---|---|---|
-| Hapus pengguna | Manajemen Pengguna | Admin bisa hapus akun langsung dari web (dengan konfirmasi), tidak bisa hapus akun sendiri yang sedang login |
-| Search + list ke bawah | Cetak Barcode | Ada kolom pencarian, daftar item disusun ke bawah (bukan grid ke samping) supaya gampang ditemukan |
-| Item POSM bisa dicari | Input Mutasi, Transfer Antar Gudang | Dropdown item POSM sekarang ada kolom pencarian di atasnya, tidak perlu scroll manual |
-| Kartu ringkasan Dashboard bisa diklik | Dashboard | "Total Stok" → Stok Gudang (admin & staff gudang); "Jenis Item" → Master POSM (admin); "Jumlah Gudang" → Master Gudang (admin) |
+| Tampilkan Kartu Stok (tanpa download) | Scan Stok Keluar | Setelah scan/pilih item, sekarang ada 2 tombol: **👁 Tampilkan** (buka PDF di tab baru untuk dilihat saja) dan **📄 Download** (langsung unduh file) |
 
 <details>
 <summary>Riwayat update sebelumnya (klik untuk lihat)</summary>
 
+- Hapus pengguna dari web (Edge Function `delete-user`), search + list ke bawah di Cetak Barcode, item POSM bisa dicari di Input Mutasi/Transfer, kartu ringkasan Dashboard bisa diklik
 - Konfirmasi sebelum logout + auto-logout setelah 30 menit idle
 - Cetak Kartu Stok PDF per item (format kartu stok fisik)
 - Nomor Bukti di transaksi Input Mutasi & Transfer
@@ -531,6 +525,12 @@ konfirmasi jumlah. Cocok dipakai langsung dari HP di lapangan.
 Kolom **SALDO** dihitung otomatis berdasarkan seluruh riwayat transaksi item
 tersebut di gudang itu (termasuk transfer masuk dari gudang lain), diurutkan
 dari yang paling lama.
+
+> Dari halaman **Scan Stok Keluar**, setelah scan/pilih item ada 2 pilihan:
+> **👁 Tampilkan Kartu Stok** (buka PDF di tab baru untuk dilihat saja, tidak
+> otomatis ke-download — cocok kalau cuma mau cek cepat) atau **📄 Download
+> Kartu Stok** (langsung unduh filenya). Isinya sama persis dengan yang dari
+> halaman Stok Gudang.
 
 > Nama perusahaan di kop PDF ("PT. FASTRATA BUANA") saat ini di-hardcode di
 > `src/lib/kartuStok.js` (variabel `COMPANY_NAME`). Kalau nama perusahaan

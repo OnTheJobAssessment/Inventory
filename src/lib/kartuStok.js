@@ -14,8 +14,13 @@ const COMPANY_NAME = 'PT. FASTRATA BUANA'
  * @param {Array<{tanggal:string, nomor_bukti:string|null, dariKepada:string, tipe:string, jumlah:number}>} params.rows
  *   tipe salah satu dari: 'masuk' | 'keluar' | 'transfer_masuk' | 'transfer_keluar' | 'adjustment'
  *   rows harus sudah terurut dari transaksi paling lama ke paling baru.
+ * @param {'download'|'view'} [params.mode] - 'download' (default) langsung
+ *   unduh file; 'view' buka PDF di tab baru untuk dilihat saja.
+ * @param {Window|null} [params.targetWindow] - untuk mode 'view': tab yang
+ *   SUDAH dibuka lebih dulu (window.open('', '_blank')) sebelum proses async
+ *   dimulai, supaya browser tidak menganggapnya pop-up dan memblokirnya.
  */
-export function generateKartuStokPdf({ item, warehouse, rows }) {
+export function generateKartuStokPdf({ item, warehouse, rows, mode = 'download', targetWindow = null }) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
 
   // ---- Header ----
@@ -108,8 +113,18 @@ export function generateKartuStokPdf({ item, warehouse, rows }) {
     margin: { left: 14, right: 14 },
   })
 
-  const safeName = (item?.nama ?? 'item').replace(/[^a-z0-9]+/gi, '-')
-  doc.save(`Kartu-Stok_${item?.kode_posm ?? ''}_${safeName}.pdf`)
+  if (mode === 'view') {
+    // Buka di tab baru untuk dilihat saja, tidak otomatis ke-download.
+    const blobUrl = doc.output('bloburl')
+    if (targetWindow) {
+      targetWindow.location.href = blobUrl
+    } else {
+      window.open(blobUrl, '_blank')
+    }
+  } else {
+    const safeName = (item?.nama ?? 'item').replace(/[^a-z0-9]+/gi, '-')
+    doc.save(`Kartu-Stok_${item?.kode_posm ?? ''}_${safeName}.pdf`)
+  }
 }
 
 /**
@@ -119,9 +134,9 @@ export function generateKartuStokPdf({ item, warehouse, rows }) {
  * tidak duplikat logika.
  *
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
- * @param {{item: {id:number, kode_posm:string, nama:string, satuan:string}, warehouse: {id:number, nama_gudang:string}}} params
+ * @param {{item: {id:number, kode_posm:string, nama:string, satuan:string}, warehouse: {id:number, nama_gudang:string}, mode?: 'download'|'view', targetWindow?: Window|null}} params
  */
-export async function fetchAndPrintKartuStok(supabase, { item, warehouse }) {
+export async function fetchAndPrintKartuStok(supabase, { item, warehouse, mode = 'download', targetWindow = null }) {
   if (!item?.id || !warehouse?.id) {
     throw new Error('Data item atau gudang belum lengkap.')
   }
@@ -159,5 +174,5 @@ export async function fetchAndPrintKartuStok(supabase, { item, warehouse }) {
     return { tanggal, nomor_bukti: m.nomor_bukti, dariKepada, tipe, jumlah: m.jumlah }
   })
 
-  generateKartuStokPdf({ item, warehouse, rows })
+  generateKartuStokPdf({ item, warehouse, rows, mode, targetWindow })
 }

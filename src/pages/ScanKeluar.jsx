@@ -257,12 +257,25 @@ export default function ScanKeluar() {
     if (kodeFromUrl) setSearchParams({}, { replace: true })
   }
 
-  async function handleDownloadKartuStok() {
+  async function handleKartuStok(mode) {
     if (!scannedItem || !currentWarehouse) return
-    setDownloadingKartu(true)
+
+    // Untuk mode 'view': buka tab kosong DULUAN (langsung sinkron saat
+    // klik), baru isi kontennya setelah data selesai diambil. Kalau
+    // window.open dipanggil setelah proses async, banyak browser
+    // menganggapnya pop-up dan memblokirnya.
+    const targetWindow = mode === 'view' ? window.open('', '_blank') : null
+
+    setDownloadingKartu(mode)
     try {
-      await fetchAndPrintKartuStok(supabase, { item: scannedItem.item, warehouse: currentWarehouse })
+      await fetchAndPrintKartuStok(supabase, {
+        item: scannedItem.item,
+        warehouse: currentWarehouse,
+        mode,
+        targetWindow,
+      })
     } catch (e) {
+      if (targetWindow) targetWindow.close()
       setMessage({ type: 'error', text: 'Gagal membuat Kartu Stok: ' + e.message })
     }
     setDownloadingKartu(false)
@@ -409,13 +422,22 @@ export default function ScanKeluar() {
               </button>
             </div>
 
-            <button
-              className="btn-secondary w-full"
-              disabled={downloadingKartu}
-              onClick={handleDownloadKartuStok}
-            >
-              {downloadingKartu ? 'Menyiapkan PDF...' : '📄 Download Kartu Stok'}
-            </button>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                className="btn-secondary"
+                disabled={!!downloadingKartu}
+                onClick={() => handleKartuStok('view')}
+              >
+                {downloadingKartu === 'view' ? 'Menyiapkan...' : '👁 Tampilkan Kartu Stok'}
+              </button>
+              <button
+                className="btn-secondary"
+                disabled={!!downloadingKartu}
+                onClick={() => handleKartuStok('download')}
+              >
+                {downloadingKartu === 'download' ? 'Menyiapkan...' : '📄 Download Kartu Stok'}
+              </button>
+            </div>
           </div>
         )}
 
